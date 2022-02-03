@@ -83,10 +83,7 @@ class Job(context.Managed):
         self._nodes_to_checkpoint = nodes_to_checkpoint
 
     def nodes_to_checkpoint(self):
-        if self._nodes_to_checkpoint:
-            return self._nodes_to_checkpoint
-        else:
-            return self.init_group.used_nodes()
+        return self._nodes_to_checkpoint or self.init_group.used_nodes()
 
     def compile(self, session_class):
         self._nodes_to_checkpoint = self.nodes_to_checkpoint()
@@ -139,11 +136,9 @@ def db_name(epoch, node_name, db_prefix, path_prefix=None):
             files are saved
     """
     if path_prefix:
-        db_name = path_prefix + get_ckpt_filename(node_name, epoch)
-    else:
-        ckpt_filename = get_ckpt_filename(node_name, epoch)
-        db_name = os.path.join(db_prefix, ckpt_filename)
-    return db_name
+        return path_prefix + get_ckpt_filename(node_name, epoch)
+    ckpt_filename = get_ckpt_filename(node_name, epoch)
+    return os.path.join(db_prefix, ckpt_filename)
 
 
 class CheckpointManager(object):
@@ -802,8 +797,7 @@ class JobRunner(object):
         if not self.checkpoint_manager:
             raise ValueError('Checkpoint manager is None')
         try:
-            is_accessible = self.checkpoint_manager.cp_accessible(epoch=None)
-            if is_accessible:
+            if is_accessible := self.checkpoint_manager.cp_accessible(epoch=None):
                 logger.info('Saving checkpoints for epoch {}'.format(epoch))
                 session.run(self.checkpoint_manager.save(epoch))
                 self.checkpoint_manager.write_checkpoint_metadata(epoch)

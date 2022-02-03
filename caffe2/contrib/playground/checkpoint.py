@@ -76,7 +76,7 @@ def initialize_master_xpu_model_params(model, weights_file, opts, reset_epoch):
                     )
                     if scoped_blob_name in ws_blobs:
                         ws_blob = workspace.FetchBlob(scoped_blob_name)
-                        if not ws_blob.shape == blobs[unscoped_blob_name].shape:
+                        if ws_blob.shape != blobs[unscoped_blob_name].shape:
                             log.info(
                                 ('Workspace blob {} with shape {} does '
                                     'not match weights file shape {}').format(
@@ -111,7 +111,7 @@ def broadcast_parameters(opts, model, num_xpus, broadcast_computed_param=False):
             "Current model doesn't match device number when loading checkpoint"
         params_per_xpu = int(len(params) / num_xpus)
         for idx in range(params_per_xpu):
-            blobs = [param for param in params[idx::params_per_xpu]]
+            blobs = list(params[idx::params_per_xpu])
             data = workspace.FetchBlob(blobs[0])
             log.info('Broadcasting {} to'.format(str(blobs[0])))
             for i, p in enumerate(blobs[1:]):
@@ -145,11 +145,12 @@ def save_model_params_blob(model, params_file, epoch, opts, best_metric):
     save_computed_params = [str(param) for param in
                             model.GetComputedParams('{}_{}'
                             .format(device, root_xpu_id))]
-    save_blobs = {}
-    save_blobs['epoch'] = epoch
-    save_blobs['best_metric'] = best_metric
-    save_blobs['lr'] = \
-        workspace.FetchBlob('{}_{}/lr'.format(device, root_xpu_id))
+    save_blobs = {
+        'epoch': epoch,
+        'best_metric': best_metric,
+        'lr': workspace.FetchBlob('{}_{}/lr'.format(device, root_xpu_id)),
+    }
+
     for param in save_params + save_computed_params:
         scoped_blob_name = str(param)
         unscoped_blob_name = unscope_name(scoped_blob_name)

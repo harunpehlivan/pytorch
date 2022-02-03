@@ -10,9 +10,7 @@ def unsupported(func):
 
 
 def is_supported(method):
-    if hasattr(method, "is_supported"):
-        return method.is_supported
-    return True
+    return method.is_supported if hasattr(method, "is_supported") else True
 
 
 def set_engine_mode(mode):

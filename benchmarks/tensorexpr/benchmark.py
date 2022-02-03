@@ -149,10 +149,7 @@ class Benchmark(object):
 
     def run_impl(self, use_fuser):
         warmups = 10
-        if self.device == "cuda":
-            iters = 1000
-        else:
-            iters = 10
+        iters = 1000 if self.device == "cuda" else 10
         engine = tensor_engine.get_engine()
 
         self.bm_jit = None
@@ -288,7 +285,7 @@ class DynamicShape(object):
     # pre-compute inputs so the creations of random tensors
     # do not add to the compute time
     def load_inputs(self):
-        for i in range(self.SAMPLE_SIZE - 1):
+        for _ in range(self.SAMPLE_SIZE - 1):
             self.instantiate_input()
 
     # returns a randomized shape
@@ -296,10 +293,9 @@ class DynamicShape(object):
         if not self._enable_dynamic_shapes:
             return shape
         ratios = np.random.uniform(self._dynamic_range, 1.0, len(shape))
-        dyn_shape = list(
+        return list(
             np.multiply(shape, ratios).astype(int)
         )
-        return dyn_shape
 
 
 benchmark_classes = []

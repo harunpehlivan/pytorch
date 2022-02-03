@@ -134,7 +134,7 @@ def gen_do_gradient(op, g_output):
             outer_name = inner_to_outer_map.get(grad_op_input_name, None)
             if not outer_name:
                 # check if this is an external gradient blob
-                outer_name = initial_grad_map.get(grad_op_input_name, None)
+                outer_name = initial_grad_map.get(grad_op_input_name)
             if outer_name:
                 outer_name = str(outer_name)
                 if outer_name not in new_op_inputs:
@@ -181,20 +181,19 @@ def dedupe_g_output(op, g_output):
 
         if output_name in init_grad_map:
             deduped_g_output.append(init_grad_map[output_name])
+        elif grad_name not in init_grad_map.values():
+            init_grad_map[output_name] = grad_name
+            deduped_g_output.append(grad_name)
         else:
-            if grad_name not in init_grad_map.values():
-                init_grad_map[output_name] = grad_name
-                deduped_g_output.append(grad_name)
-            else:
-                deduped_grad_name = output_name + "_" + grad_name + "_DEDUP"
-                assert deduped_grad_name not in init_grad_map.values()
-                grad_copy_op = caffe2_pb2.OperatorDef()
-                grad_copy_op.type = "Copy"
-                grad_copy_op.input.extend([grad_name])
-                grad_copy_op.output.extend([deduped_grad_name])
-                grad_ops.append(grad_copy_op)
-                deduped_g_output.append(deduped_grad_name)
-                init_grad_map[output_name] = deduped_grad_name
+            deduped_grad_name = output_name + "_" + grad_name + "_DEDUP"
+            assert deduped_grad_name not in init_grad_map.values()
+            grad_copy_op = caffe2_pb2.OperatorDef()
+            grad_copy_op.type = "Copy"
+            grad_copy_op.input.extend([grad_name])
+            grad_copy_op.output.extend([deduped_grad_name])
+            grad_ops.append(grad_copy_op)
+            deduped_g_output.append(deduped_grad_name)
+            init_grad_map[output_name] = deduped_grad_name
     return grad_ops, deduped_g_output
 
 
@@ -211,13 +210,13 @@ def gen_while_gradient(op, g_output):
 
     grad_ops, deduped_g_output = dedupe_g_output(op, g_output)
     g_output = deduped_g_output
-
-    init_grad_map = {}
     op_output = [str(o) for o in op.output]
-    for output_name, grad_output_name in zip(op_output, g_output):
-        if grad_output_name:
-            init_grad_map[BlobReference(output_name)] = \
-                BlobReference(grad_output_name)
+    init_grad_map = {
+        BlobReference(output_name): BlobReference(grad_output_name)
+        for output_name, grad_output_name in zip(op_output, g_output)
+        if grad_output_name
+    }
+
     assert len(init_grad_map) > 0, "Empty initial gradient map for While op"
 
     loop_net = _get_net_argument(op, "loop_net")
@@ -301,7 +300,7 @@ def _prepare_gradient_while_ops(
     del gradient_while_def.output[:]
     gradient_while_def.output.extend(output_names)
     gradient_while_def.is_gradient_op = True
-    return [o for o in cond_init_net.Proto().op] + [gradient_while_def]
+    return list(cond_init_net.Proto().op) + [gradient_while_def]
 
 
 def _get_do_arguments(do_op):
@@ -341,14 +340,14 @@ def gen_if_gradient(op, g_output):
 
     grad_ops, deduped_g_output = dedupe_g_output(op, g_output)
     g_output = deduped_g_output
-
-    init_grad_map = {}  # map from if's output blob to output gradient blob
     op_input = [str(i) for i in op.input]
     op_output = [str(o) for o in op.output]
-    for output_name, grad_output_name in zip(op_output, g_output):
-        if grad_output_name:
-            init_grad_map[BlobReference(output_name)] = \
-                BlobReference(grad_output_name)
+    init_grad_map = {
+        BlobReference(output_name): BlobReference(grad_output_name)
+        for output_name, grad_output_name in zip(op_output, g_output)
+        if grad_output_name
+    }
+
     # shouldn't call without at least one output gradient available
     assert len(init_grad_map) > 0, "Empty initial gradient map for If op"
 
@@ -364,8 +363,7 @@ def gen_if_gradient(op, g_output):
     else_output_names = set()
     else_grad_map = {}
     else_grad_net = None
-    else_net = _get_net_argument(op, "else_net")
-    if else_net:
+    if else_net := _get_net_argument(op, "else_net"):
         else_grad_net, else_grad_map, else_input_names, else_output_names = \
             _gen_subnet_gradient(else_net, init_grad_map)
         assert else_grad_net, "Failed to get gradient net for else in If op"
@@ -380,8 +378,7 @@ def gen_if_gradient(op, g_output):
                 # and another branch uses blob and has <blob_name>_grad name
                 # in it's grad map (might be different from original grad blob)
                 if then_grad_blob != else_grad_blob:
-                    init_grad_name = init_grad_map[else_blob] \
-                        if else_blob in init_grad_map else None
+                    init_grad_name = init_grad_map.get(else_blob)
 
                     if then_grad_blob == init_grad_name:
                         grad_map[else_blob] = else_grad_blob
@@ -397,8 +394,10 @@ def gen_if_gradient(op, g_output):
     # by the selected if's branch are initialized with zeros
     then_other_output_names = \
         then_output_names - (then_output_names & else_output_names)
-    then_other_grad_output_names = set(
-        [o for o in then_other_output_names if o in then_grad_map.values()])
+    then_other_grad_output_names = {
+        o for o in then_other_output_names if o in then_grad_map.values()
+    }
+
     zero_then = _gen_grad_zero_init_ops(
         init_grad_map, then_grad_map, then_other_grad_output_names)
     if else_grad_net:
@@ -415,8 +414,10 @@ def gen_if_gradient(op, g_output):
 
     else_other_output_names = \
         else_output_names - (then_output_names & else_output_names)
-    else_other_grad_output_names = set(
-        [o for o in else_other_output_names if o in else_grad_map.values()])
+    else_other_grad_output_names = {
+        o for o in else_other_output_names if o in else_grad_map.values()
+    }
+
     zero_else = _gen_grad_zero_init_ops(
         init_grad_map, else_grad_map, else_other_grad_output_names)
     then_grad_net.op.extend(zero_else)
@@ -478,9 +479,7 @@ def _gen_subgradient_pass(subnet, init_grad):
     subnet_ir = IR(subnet.op)
     grad_ops, grad_blob_map = \
         subnet_ir.GetBackwardPass(init_grad)
-    grad_names_map = {}
-    for b, g in grad_blob_map.items():
-        grad_names_map[str(b)] = str(g)
+    grad_names_map = {str(b): str(g) for b, g in grad_blob_map.items()}
     return grad_ops, grad_names_map
 
 
@@ -697,8 +696,7 @@ def disambiguate_grad_if_op_output(grad_op, idx, new_grad_output):
         for i, out in enumerate(op.output):
             if out == old_grad_out_match:
                 op.output[i] = new_grad_output
-    else_net = _get_net_argument(grad_op, "else_net")
-    if else_net:
+    if else_net := _get_net_argument(grad_op, "else_net"):
         for op in else_net.op:
             for i, out in enumerate(op.output):
                 if out == old_grad_out_match:

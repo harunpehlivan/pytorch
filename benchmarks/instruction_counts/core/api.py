@@ -395,8 +395,7 @@ class GroupedBenchmark:
 
         lines_by_label: Dict[str, List[str]] = {"SETUP": [], "GLOBAL_SETUP": []}
         for line in block.splitlines(keepends=False):
-            match = re.search(label_pattern, line.strip())
-            if match:
+            if match := re.search(label_pattern, line.strip()):
                 label = match.groups()[0]
                 if label.replace(" ", "_").upper() in ("SETUP", "GLOBAL_SETUP"):
                     label = label.replace(" ", "_").upper()

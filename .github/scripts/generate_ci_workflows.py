@@ -217,17 +217,17 @@ class CIWorkflow:
         err_message = f"invalid test_runner_type for {self.arch}: {self.test_runner_type}"
         if self.arch == 'linux':
             assert self.test_runner_type in LINUX_RUNNERS, err_message
-        if self.arch == 'windows':
+        elif self.arch == 'windows':
             assert self.test_runner_type in WINDOWS_RUNNERS, err_message
 
         if not self.ciflow_config.isolated_workflow:
             assert LABEL_CIFLOW_ALL in self.ciflow_config.labels
         if self.arch == 'linux':
             assert LABEL_CIFLOW_LINUX in self.ciflow_config.labels
-        if self.arch == 'windows':
-            assert LABEL_CIFLOW_WIN in self.ciflow_config.labels
-        if self.arch == 'macos':
+        elif self.arch == 'macos':
             assert LABEL_CIFLOW_MACOS in self.ciflow_config.labels
+        elif self.arch == 'windows':
+            assert LABEL_CIFLOW_WIN in self.ciflow_config.labels
         # Make sure that jobs with tests have a test_runner_type
         if not self.exclude_test:
             assert self.test_runner_type != ''
@@ -247,8 +247,7 @@ class CIWorkflow:
     def generate_workflow_file(self, workflow_template: jinja2.Template) -> None:
         output_file_path = GITHUB_DIR / f"workflows/generated-{self.build_environment}.yml"
         with open(output_file_path, "w") as output_file:
-            GENERATED = "generated"  # Note that please keep the variable GENERATED otherwise phabricator will hide the whole file
-            output_file.writelines([f"# @{GENERATED} DO NOT EDIT MANUALLY\n"])
+            output_file.writelines([f'# @generated DO NOT EDIT MANUALLY\n'])
             try:
                 content = workflow_template.render(asdict(self))
             except Exception as e:
@@ -272,8 +271,7 @@ class DockerWorkflow:
     def generate_workflow_file(self, workflow_template: jinja2.Template) -> None:
         output_file_path = GITHUB_DIR / "workflows/generated-docker-builds.yml"
         with open(output_file_path, "w") as output_file:
-            GENERATED = "generated"  # Note that please keep the variable GENERATED otherwise phabricator will hide the whole file
-            output_file.writelines([f"# @{GENERATED} DO NOT EDIT MANUALLY\n"])
+            output_file.writelines([f'# @generated DO NOT EDIT MANUALLY\n'])
             try:
                 content = workflow_template.render(asdict(self))
             except Exception as e:
@@ -306,8 +304,7 @@ class BinaryBuildWorkflow:
     def generate_workflow_file(self, workflow_template: jinja2.Template) -> None:
         output_file_path = GITHUB_DIR / f"workflows/generated-{self.build_environment}.yml"
         with open(output_file_path, "w") as output_file:
-            GENERATED = "generated"  # Note that please keep the variable GENERATED otherwise phabricator will hide the whole file
-            output_file.writelines([f"# @{GENERATED} DO NOT EDIT MANUALLY\n"])
+            output_file.writelines([f'# @generated DO NOT EDIT MANUALLY\n'])
             try:
                 content = workflow_template.render(asdict(self))
             except Exception as e:

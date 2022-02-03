@@ -54,8 +54,7 @@ def genCppH(hFilePath, cppFilePath, srcDirPath, glslcPath, tmpDirPath, env):
         subprocess.check_call(cmd)
         spvPaths.append(spvPath)
 
-    h = "#pragma once\n"
-    h += "#include <stdint.h>\n"
+    h = "#pragma once\n" + "#include <stdint.h>\n"
     nsbegin = "\nnamespace at { namespace native { namespace vulkan { \n"
     nsend = "\n} } } //namespace at::native::vulkan\n"
 

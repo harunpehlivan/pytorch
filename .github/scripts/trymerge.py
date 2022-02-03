@@ -227,17 +227,16 @@ class GitHubPR:
 
     def get_check_suite_conclusions(self) -> Dict[int, str]:
         last_commit = self.info["commits"]["nodes"][-1]["commit"]
-        rc = {}
-        for node in last_commit["checkSuites"]["nodes"]:
-            rc[int(node["app"]["databaseId"])] = node["conclusion"]
-        return rc
+        return {
+            int(node["app"]["databaseId"]): node["conclusion"]
+            for node in last_commit["checkSuites"]["nodes"]
+        }
 
     def get_authors(self) -> Dict[str, str]:
-        rc = {}
-        for idx in range(self.get_commit_count()):
-            rc[self.get_committer_login(idx)] = self.get_committer_author(idx)
-
-        return rc
+        return {
+            self.get_committer_login(idx): self.get_committer_author(idx)
+            for idx in range(self.get_commit_count())
+        }
 
     def get_author(self) -> str:
         authors = self.get_authors()
@@ -342,7 +341,7 @@ def find_matching_merge_rule(pr: GitHubPR, repo: GitRepo) -> MergeRule:
         patterns_re = patterns_to_regex(rule.patterns)
         approvers_intersection = approved_by.intersection(rule_approvers_set)
         # If rule requires approvers but they aren't the ones that reviewed PR
-        if len(approvers_intersection) == 0 and len(rule_approvers_set) > 0:
+        if len(approvers_intersection) == 0 and rule_approvers_set:
             print(f"Skipping rule {rule_name} due to no approvers overlap")
             continue
         if rule.mandatory_app_id is not None:
@@ -351,11 +350,9 @@ def find_matching_merge_rule(pr: GitHubPR, repo: GitRepo) -> MergeRule:
             if mandatory_app_id not in cs_conslusions or cs_conslusions[mandatory_app_id] != "SUCCESS":
                 print(f"Skipping rule {rule_name} as mandatory app {mandatory_app_id} is not in {cs_conslusions}")
                 continue
-        non_matching_files = []
-        for fname in changed_files:
-            if not patterns_re.match(fname):
-                non_matching_files.append(fname)
-        if len(non_matching_files) > 0:
+        if non_matching_files := [
+            fname for fname in changed_files if not patterns_re.match(fname)
+        ]:
             print(f"Skipping rule {rule_name} due to non-matching files: {non_matching_files}")
             continue
         print(f"Matched rule {rule_name} for {pr.pr_num}")

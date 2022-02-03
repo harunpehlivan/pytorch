@@ -22,10 +22,8 @@ class WrapperModule(object):
     def __init__(self, wrapped_type, module_config, debug, save=False):
         pt_fn = module_config.pt_fn
         self.module = wrapped_type(pt_fn)
-        self.tensor_inputs = []
         self.module_name = wrapped_type.__name__
-        for _ in range(module_config.num_params):
-            self.tensor_inputs.append(torch.randn(1))
+        self.tensor_inputs = [torch.randn(1) for _ in range(module_config.num_params)]
         if module_config.graph_mode:
             self.module = torch.jit.trace(self.module, self.tensor_inputs)
             if save:

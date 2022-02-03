@@ -23,11 +23,8 @@ def get_simple_regression(device: torch.device) -> GetterReturnType:
     def forward(beta_value: Tensor) -> Tensor:
         mu = X.mm(beta_value)
 
-        # We need to compute the first and second gradient of this score with respect
-        # to beta_value. We disable Bernoulli validation because Y is a relaxed value.
-        score = (dist.Bernoulli(logits=mu, validate_args=False).log_prob(Y).sum() +
+        return (dist.Bernoulli(logits=mu, validate_args=False).log_prob(Y).sum() +
                  beta_prior.log_prob(beta_value).sum())
-        return score
 
     return forward, (beta_value.to(device),)
 

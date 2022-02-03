@@ -62,7 +62,7 @@ class Wav2Letter(nn.Module):
             )
             self.acoustic_model = nn.Sequential(waveform_model, acoustic_model)
 
-        if input_type in ["power_spectrum", "mfcc"]:
+        if input_type in {"power_spectrum", "mfcc"}:
             self.acoustic_model = acoustic_model
 
     def forward(self, x: Tensor) -> Tensor:
@@ -134,10 +134,7 @@ class MaskConv(nn.Module):
 
 class InferenceBatchSoftmax(nn.Module):
     def forward(self, input_):
-        if not self.training:
-            return F.softmax(input_, dim=-1)
-        else:
-            return input_
+        return F.softmax(input_, dim=-1) if not self.training else input_
 
 
 class BatchRNN(nn.Module):
@@ -217,13 +214,10 @@ class DeepSpeech(nn.Module):
         # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
         rnn_input_size = int(math.floor((sample_rate * window_size) / 2) + 1)
         rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
-        rnn_input_size = int(math.floor(rnn_input_size + 2 * 10 - 21) / 2 + 1)
-        rnn_input_size *= 32
-
-        rnns = []
+        rnn_input_size = int(math.floor(rnn_input_size + 2 * 10 - 21) / 2 + 1) * 32
         rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type,
                        bidirectional=bidirectional, batch_norm=False)
-        rnns.append(('0', rnn))
+        rnns = [('0', rnn)]
         for x in range(nb_layers - 1):
             rnn = BatchRNN(input_size=rnn_hidden_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type,
                            bidirectional=bidirectional)
@@ -506,8 +500,11 @@ class ScaledDotProduct(torch.nn.Module):
         if attn_mask is not None:
             if attn_mask.dim() != 3:
                 raise RuntimeError('attn_mask must be a 3D tensor.')
-            if (attn_mask.size(-1) != src_len) or (attn_mask.size(-2) != tgt_len) or \
-               (attn_mask.size(-3) != 1 and attn_mask.size(-3) != batch_heads):
+            if (
+                attn_mask.size(-1) != src_len
+                or attn_mask.size(-2) != tgt_len
+                or attn_mask.size(-3) not in [1, batch_heads]
+            ):
                 raise RuntimeError('The size of the attn_mask is not correct.')
             if attn_mask.dtype != torch.bool:
                 raise RuntimeError('Only bool tensor is supported for attn_mask')

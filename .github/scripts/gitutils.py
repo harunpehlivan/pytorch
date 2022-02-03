@@ -131,7 +131,7 @@ class GitRepo:
 
     def show_ref(self, name: str) -> str:
         refs = self._run_git('show-ref', '-s', name).strip().split('\n')
-        if not all(refs[i] == refs[0] for i in range(1, len(refs))):
+        if any(refs[i] != refs[0] for i in range(1, len(refs))):
             raise RuntimeError(f"referce {name} is ambigous")
         return refs[0]
 
@@ -142,8 +142,7 @@ class GitRepo:
         return self._run_git('merge-base', from_ref, to_ref).strip()
 
     def patch_id(self, ref: Union[str, List[str]]) -> List[Tuple[str, str]]:
-        is_list = isinstance(ref, list)
-        if is_list:
+        if is_list := isinstance(ref, list):
             if len(ref) == 0:
                 return []
             ref = " ".join(ref)
@@ -243,9 +242,7 @@ class PeekableIterator(Iterator[str]):
         self._idx = -1
 
     def peek(self) -> Optional[str]:
-        if self._idx + 1 >= len(self._val):
-            return None
-        return self._val[self._idx + 1]
+        return None if self._idx + 1 >= len(self._val) else self._val[self._idx + 1]
 
     def __iter__(self) -> "PeekableIterator":
         return self
@@ -272,7 +269,7 @@ def patterns_to_regex(allowed_patterns: List[str]) -> Any:
         if idx > 0:
             rc += "|"
         pattern_ = PeekableIterator(pattern)
-        assert not any(c in pattern for c in "{}()[]\\")
+        assert all(c not in pattern for c in "{}()[]\\")
         for c in pattern_:
             if c == ".":
                 rc += "\\."

@@ -21,8 +21,7 @@ def get_wav2letter(device: torch.device) -> GetterReturnType:
         load_weights(model, names, new_params)
         out = model(inputs)
 
-        loss = criterion(out, labels)
-        return loss
+        return criterion(out, labels)
 
     return forward, params
 
@@ -59,8 +58,7 @@ def get_deepspeech(device: torch.device) -> GetterReturnType:
         out, out_sizes = model(inputs, inputs_sizes)
         out = out.transpose(0, 1)  # For ctc loss
 
-        loss = criterion(out, targets, out_sizes, targets_sizes)
-        return loss
+        return criterion(out, targets, out_sizes, targets_sizes)
 
     return forward, params
 
@@ -82,8 +80,9 @@ def get_transformer(device: torch.device) -> GetterReturnType:
         load_weights(model, names, new_params)
         out = model(inputs)
 
-        loss = criterion(out.reshape(N * seq_length, ntoken), targets.reshape(N * seq_length))
-        return loss
+        return criterion(
+            out.reshape(N * seq_length, ntoken), targets.reshape(N * seq_length)
+        )
 
     return forward, params
 
@@ -114,9 +113,6 @@ def get_multiheadattn(device: torch.device) -> GetterReturnType:
         load_weights(model, names, new_params)
         mha_output, attn_weights = model(query, key, value, attn_mask=attn_mask, bias_k=bias_k, bias_v=bias_v)
 
-        # Don't test any specific loss, just backprop ones for both outputs
-        loss = mha_output.sum() + attn_weights.sum()
-
-        return loss
+        return mha_output.sum() + attn_weights.sum()
 
     return forward, params

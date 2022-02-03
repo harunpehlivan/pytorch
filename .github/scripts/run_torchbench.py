@@ -32,9 +32,7 @@ timeout: 720
 tests:"""
 
 def gen_abtest_config(control: str, treatment: str, models: List[str]) -> str:
-    d = {}
-    d["control"] = control
-    d["treatment"] = treatment
+    d = {'control': control, 'treatment': treatment}
     config = ABTEST_CONFIG_TEMPLATE.format(**d)
     if models == ["ALL"]:
         return config + "\n"
@@ -51,8 +49,7 @@ def setup_gha_env(name: str, val: str) -> None:
 
 def find_current_branch(repo_path: str) -> str:
     repo = git.Repo(repo_path)
-    name: str = repo.active_branch.name
-    return name
+    return repo.active_branch.name
 
 def deploy_torchbench_config(output_dir: str, config: str) -> None:
     # Create test dir if needed
@@ -66,8 +63,9 @@ def extract_models_from_pr(torchbench_path: str, prbody_file: str) -> List[str]:
     model_list = []
     with open(prbody_file, "r") as pf:
         lines = map(lambda x: x.strip(), pf.read().splitlines())
-        magic_lines = list(filter(lambda x: x.startswith(MAGIC_PREFIX), lines))
-        if magic_lines:
+        if magic_lines := list(
+            filter(lambda x: x.startswith(MAGIC_PREFIX), lines)
+        ):
             # Only the first magic line will be recognized.
             model_list = list(map(lambda x: x.strip(), magic_lines[0][len(MAGIC_PREFIX):].split(",")))
     # Shortcut: if model_list is ["ALL"], run all the tests
@@ -86,8 +84,9 @@ def find_torchbench_branch(prbody_file: str) -> str:
     branch_name: str = ""
     with open(prbody_file, "r") as pf:
         lines = map(lambda x: x.strip(), pf.read().splitlines())
-        magic_lines = list(filter(lambda x: x.startswith(MAGIC_TORCHBENCH_PREFIX), lines))
-        if magic_lines:
+        if magic_lines := list(
+            filter(lambda x: x.startswith(MAGIC_TORCHBENCH_PREFIX), lines)
+        ):
             # Only the first magic line will be recognized.
             branch_name = magic_lines[0][len(MAGIC_TORCHBENCH_PREFIX):].strip()
     # If not specified, use main as the default branch

@@ -82,15 +82,13 @@ def main():
     num_warmup_iters = args.num_warmup_iters
     num_iters = args.num_iters
     config = BenchmarkConfig(num_warmup_iters, num_iters)
-    graph_mode = True
-    if args.eager_mode:
-        graph_mode = False
     result = {}
     if args.op == "add_op":
         num_params = 2
         if args.benchmark_c2_net:
             module_config = ModuleConfig(None, 'Sum', num_params, None)
         else:
+            graph_mode = not args.eager_mode
             module_config = ModuleConfig(add_tensors_loop, None, num_params, graph_mode)
         benchmark_simple_fn(args, config, module_config, SimpleAddModule, result)
     print_results(result)

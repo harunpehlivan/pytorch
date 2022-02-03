@@ -73,9 +73,7 @@ class TorchBenchmarkBase(torch.nn.Module):
     def module_name(self):
         """ this is used to label the operator being benchmarked
         """
-        if self.user_given_name:
-            return self.user_given_name
-        return self.__class__.__name__
+        return self.user_given_name or self.__class__.__name__
 
     def set_module_name(self, name):
         self.user_given_name = name
@@ -95,9 +93,8 @@ class TorchBenchmarkBase(torch.nn.Module):
             test_name_str.append(
                 ('' if key in skip_key_list else key)
                 + str(value if type(value) != bool else int(value)))
-        name = (self.module_name() + '_' +
+        return (self.module_name() + '_' +
                 '_'.join(test_name_str)).replace(" ", "")
-        return name
 
 
 class PyTorchOperatorTestCase(object):

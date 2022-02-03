@@ -96,9 +96,7 @@ def add_if_op(if_net, cond_blob, lexical_scope, then_net, else_net=None):
         outer_blobs_idx=then_outer_blob_names_idx)
     do_then_net.AddExternalOutput(*then_output_blobs)
 
-    if_args = {}
-    if_args['then_net'] = do_then_net.Proto()
-
+    if_args = {'then_net': do_then_net.Proto()}
     do_else_workspace_blob = None
     if else_net:
         do_else_net = core.Net('do_else_net')
@@ -192,21 +190,16 @@ def add_while_op(
         copy_external_blobs=True)
     do_loop_body_net.AddExternalOutput(*loop_outputs)
 
-    while_args = {}
-    while_args['loop_net'] = do_loop_body_net.Proto()
-
+    while_args = {'loop_net': do_loop_body_net.Proto()}
     cond_workspace_blob = None
     if condition_body_net:
         cond_input_blob_names, cond_output_blob_names = get_external_blob_names(
             condition_body_net, lexical_scope)
 
-        # make sure condition blob is written by condition net and is
-        # visible outside of it
-        found_condition_output = False
-        for op in condition_body_net.Proto().op:
-            if str(cond_blob) in op.output:
-                found_condition_output = True
-                break
+        found_condition_output = any(
+            str(cond_blob) in op.output for op in condition_body_net.Proto().op
+        )
+
         assert found_condition_output, \
             "Condition net does not write into condition blob"
         if str(cond_blob) not in cond_output_blob_names:

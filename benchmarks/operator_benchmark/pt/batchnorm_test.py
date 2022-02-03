@@ -11,8 +11,7 @@ if torch.backends.cudnn.is_available:
     def cudnn_benchmark_configs(configs):
         result = []
         for config in configs:
-            is_cuda = any('cuda' in attr.values() for attr in config)
-            if is_cuda:
+            if is_cuda := any('cuda' in attr.values() for attr in config):
                 result.append((*config, dict(cudnn=True)))
             result.append((*config, dict(cudnn=False)))
         return result

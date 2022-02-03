@@ -12,12 +12,11 @@ def barf():
 
 
 def assertEqual(tensor, expected, threshold=0.001):
-    if isinstance(tensor, list) or isinstance(tensor, tuple):
+    if isinstance(tensor, (list, tuple)):
         for t, e in zip(tensor, expected):
             assertEqual(t, e)
-    else:
-        if (tensor - expected).abs().max() > threshold:
-            barf()
+    elif (tensor - expected).abs().max() > threshold:
+        barf()
 
 
 def filter_requires_grad(tensors):
