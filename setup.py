@@ -256,13 +256,13 @@ for i, arg in enumerate(sys.argv):
         # options.
         CMAKE_ONLY = True
         continue
-    if arg == 'rebuild' or arg == 'build':
+    if arg in ['rebuild', 'build']:
         arg = 'build'  # rebuild is gone, make it build
         EMIT_BUILD_WARNING = True
     if arg == "--":
         filtered_args += sys.argv[i:]
         break
-    if arg == '-q' or arg == '--quiet':
+    if arg in ['-q', '--quiet']:
         VERBOSE_SCRIPT = False
     if arg in ['clean', 'egg_info', 'sdist']:
         RUN_BUILD_DEPS = False
@@ -496,17 +496,17 @@ class build_ext(setuptools.command.build_ext.build_ext):
             report('-- Building NCCL library')
         else:
             report('-- Not using NCCL')
-        if cmake_cache_vars['USE_DISTRIBUTED']:
-            if IS_WINDOWS:
-                report('-- Building without distributed package')
-            else:
-                report('-- Building with distributed package: ')
-                report('  -- USE_TENSORPIPE={}'.format(cmake_cache_vars['USE_TENSORPIPE']))
-                report('  -- USE_GLOO={}'.format(cmake_cache_vars['USE_GLOO']))
-                report('  -- USE_MPI={}'.format(cmake_cache_vars['USE_OPENMPI']))
-        else:
+        if (
+            cmake_cache_vars['USE_DISTRIBUTED']
+            and IS_WINDOWS
+            or not cmake_cache_vars['USE_DISTRIBUTED']
+        ):
             report('-- Building without distributed package')
-
+        else:
+            report('-- Building with distributed package: ')
+            report('  -- USE_TENSORPIPE={}'.format(cmake_cache_vars['USE_TENSORPIPE']))
+            report('  -- USE_GLOO={}'.format(cmake_cache_vars['USE_GLOO']))
+            report('  -- USE_MPI={}'.format(cmake_cache_vars['USE_OPENMPI']))
         # Do not use clang to compile extensions if `-fstack-clash-protection` is defined
         # in system CFLAGS
         c_flags = str(os.getenv('CFLAGS', ''))
@@ -680,12 +680,10 @@ class clean(setuptools.Command):
             ignores = f.read()
             pat = re.compile(r'^#( BEGIN NOT-CLEAN-FILES )?')
             for wildcard in filter(None, ignores.split('\n')):
-                match = pat.match(wildcard)
-                if match:
+                if match := pat.match(wildcard):
                     if match.group(1):
                         # Marker is found and stop reading .gitignore.
                         break
-                    # Ignore lines which begin with '#'.
                 else:
                     for filename in glob.glob(wildcard):
                         try:

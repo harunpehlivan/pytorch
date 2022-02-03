@@ -134,16 +134,10 @@ def train(lm_dataloader, model, criterion, optimizer, vocab_size, args):
     optimizer = optimizer(model)
 
     def get_first_device(model):
-        if model.devices:
-            return model.devices[0]
-        else:
-            return torch.cuda.current_device()
+        return model.devices[0] if model.devices else torch.cuda.current_device()
 
     def get_last_device(model):
-        if model.devices:
-            return model.devices[-1]
-        else:
-            return torch.cuda.current_device()
+        return model.devices[-1] if model.devices else torch.cuda.current_device()
 
 
     print('Number of parameters for model: {}'.format(sum(p.numel() for p in model.parameters())))

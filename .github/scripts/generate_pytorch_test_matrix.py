@@ -54,7 +54,10 @@ def run_as_if_on_trunk() -> bool:
     for label in pr_labels:
         if label != 'ciflow/default' and label in labels_to_workflows:
             workflows_triggered_by_label = labels_to_workflows[label]
-            if any([BUILD_ENVIRONMENT in workflow for workflow in workflows_triggered_by_label]):
+            if any(
+                BUILD_ENVIRONMENT in workflow
+                for workflow in workflows_triggered_by_label
+            ):
                 current_workflow_triggered_by_label = True
                 break
 

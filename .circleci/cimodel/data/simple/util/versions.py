@@ -17,10 +17,7 @@ class MultiPartVersion:
         return ".".join(self.prefixed_parts())
 
     def render_dots_or_parts(self, with_dots):
-        if with_dots:
-            return [self.render_dots()]
-        else:
-            return self.prefixed_parts()
+        return [self.render_dots()] if with_dots else self.prefixed_parts()
 
 
 class CudaVersion(MultiPartVersion):

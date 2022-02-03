@@ -65,9 +65,7 @@ class Caffe2BenchmarkBase(object):
     def module_name(self):
         """ this is used to label the operator being benchmarked
         """
-        if self.user_provided_name:
-            return self.user_provided_name
-        return self.__class__.__name__
+        return self.user_provided_name or self.__class__.__name__
 
     def set_module_name(self, name):
         self.user_provided_name = name

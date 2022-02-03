@@ -12,10 +12,7 @@ DEFAULT_ENV = {"precision": "highp", "format": "rgba32f"}
 
 def findAllGlsls(path):
     vexs = glob.glob(os.path.join(path, '**', '*.glsl'), recursive=True)
-    output = []
-    for f in vexs:
-        if len(f) > 1:
-            output.append(f)
+    output = [f for f in vexs if len(f) > 1]
     output.sort()
     return output
 
@@ -25,12 +22,10 @@ def getName(filePath):
 def genCppH(hFilePath, cppFilePath, templateGlslPaths, tmpDirPath, env):
     print("hFilePath:{}".format(hFilePath))
     print("cppFilePath:{}".format(cppFilePath))
-    h = "#pragma once\n"
     nsbegin = "\nnamespace at { namespace native { namespace vulkan { \n"
     nsend = "\n} } } //namespace at::native::vulkan\n"
 
-    h += nsbegin
-
+    h = "#pragma once\n" + nsbegin
     cpp = "#include <ATen/native/vulkan/{}>".format(H_NAME)
     cpp += nsbegin
 

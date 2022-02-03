@@ -62,13 +62,12 @@ def get_pr_author_and_labels(pr_number: int) -> Tuple[str, Set[str]]:
     return user, labels
 
 def get_repo_labels() -> List[str]:
-    collected_labels: List[str] = list()
-    for page in range(0, 10):
+    collected_labels: List[str] = []
+    for page in range(10):
         response = query_pytorch(f"labels?per_page=100&page={page}")
         page_labels = list(map(lambda x: str(x["name"]), response))
         if not page_labels:
             break
-            collected_labels += page_labels
     return collected_labels
 
 def post_pytorch_comment(pr_number: int, merger: str) -> Any:

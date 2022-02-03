@@ -146,9 +146,10 @@ class PythonDDP(nn.Module):
             len(params_to_buckets), len(buckets)))
 
         # Sanity check to ensure all params are distributed correctly into buckets
-        total_params_in_buckets = 0
-        for bucket in buckets:
-            total_params_in_buckets += len(bucket.param_to_offset)
+        total_params_in_buckets = sum(
+            len(bucket.param_to_offset) for bucket in buckets
+        )
+
         assert total_param == total_params_in_buckets
 
         return params_to_buckets, buckets

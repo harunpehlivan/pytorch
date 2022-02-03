@@ -58,9 +58,7 @@ def resnet_imagenet_create_model(model, data, labels, split, opts, dataset):
         data, 'conv1', 3, 64, 7, stride=2, pad=3, weight_init=('MSRAFill', {}),
         bias_init=('ConstantFill', {'value': 0.}), no_bias=0, engine=engine
     )
-    test_mode = False
-    if split in ['test', 'val']:
-        test_mode = True
+    test_mode = split in ['test', 'val']
     bn_blob = model.SpatialBN(
         conv_blob, 'res_conv1_bn', 64,
         # does not appear to affect test_loss performance
@@ -151,10 +149,8 @@ class ResNetModelHelper():
             weight_init=("MSRAFill", {}),
             bias_init=('ConstantFill', {'value': 0.}), no_bias=1, engine=self.engine
         )
-        test_mode = False
-        if self.split in ['test', 'val']:
-            test_mode = True
-        bn_blob = self.model.SpatialBN(
+        test_mode = self.split in ['test', 'val']
+        return self.model.SpatialBN(
             conv_blob, prefix + "_bn", dim_out,
             # epsilon=1e-3,
             # momentum=0.1,
@@ -162,7 +158,6 @@ class ResNetModelHelper():
             momentum=self.opts['model_param']['bn_momentum'],
             is_test=test_mode,
         )
-        return bn_blob
 
     def conv_bn(
         self, blob_in, dim_in, dim_out, kernel, stride, prefix, group=1, pad=1,
@@ -173,16 +168,13 @@ class ResNetModelHelper():
             weight_init=("MSRAFill", {}),
             bias_init=('ConstantFill', {'value': 0.}), no_bias=1, engine=self.engine
         )
-        test_mode = False
-        if self.split in ['test', 'val']:
-            test_mode = True
-        bn_blob = self.model.SpatialBN(
+        test_mode = self.split in ['test', 'val']
+        return self.model.SpatialBN(
             conv_blob, prefix + "_bn", dim_out,
             epsilon=self.opts['model_param']['bn_epsilon'],
             momentum=self.opts['model_param']['bn_momentum'],
             is_test=test_mode,
         )
-        return bn_blob
 
     def conv_bn_relu(
         self, blob_in, dim_in, dim_out, kernel, stride, prefix, pad=1, group=1,
@@ -206,9 +198,7 @@ class ResNetModelHelper():
             stride=stride, pad=1, group=group, weight_init=("MSRAFill", {}),
             bias_init=('ConstantFill', {'value': 0.}), no_bias=1, engine=self.engine
         )
-        test_mode = False
-        if self.split in ['test', 'val']:
-            test_mode = True
+        test_mode = self.split in ['test', 'val']
         bn_blob = self.model.SpatialBN(
             conv_blob, prefix + "_branch2b_bn", dim_out,
             epsilon=self.opts['model_param']['bn_epsilon'],

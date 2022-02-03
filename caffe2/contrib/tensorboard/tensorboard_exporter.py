@@ -140,10 +140,7 @@ def _add_gradient_scope(shapes, track_blob_names, ops):
     hardcoded.
     """
     def f(name):
-        if '_grad' in name:
-            return 'GRADIENTS/{}'.format(name)
-        else:
-            return name
+        return 'GRADIENTS/{}'.format(name) if '_grad' in name else name
     _rename_all(shapes, track_blob_names, ops, f)
 
 
@@ -255,10 +252,7 @@ def _blob_to_node(producing_ops, shapes, name):
     n = NodeDef()
     n.name = name
     inputs = producing_ops.get(name, [])
-    if inputs:
-        n.op = 'Blob'
-    else:
-        n.op = 'Placeholder'
+    n.op = 'Blob' if inputs else 'Placeholder'
     n.input.extend('%s:%d' % (op.name, i) for op, i in inputs)
     if inputs:
         device = inputs[0][0].device_option

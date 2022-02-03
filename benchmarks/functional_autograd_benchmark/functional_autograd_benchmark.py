@@ -86,18 +86,18 @@ MODELS = [
 def get_v_for(model: Callable, inp: InputsType, task: str) -> VType:
     v: VType
 
-    if task in ["vjp"]:
+    if task in {"vjp"}:
         out = model(*inp)
-        v = torch.rand_like(out)
-    elif task in ["jvp", "hvp", "vhp"]:
-        if isinstance(inp, tuple):
-            v = tuple(torch.rand_like(i) for i in inp)
-        else:
-            v = torch.rand_like(inp)
-    else:
-        v = None
+        return torch.rand_like(out)
+    elif task in {"jvp", "hvp", "vhp"}:
+        return (
+            tuple(torch.rand_like(i) for i in inp)
+            if isinstance(inp, tuple)
+            else torch.rand_like(inp)
+        )
 
-    return v
+    else:
+        return None
 
 def run_once(model: Callable, inp: InputsType, task: str, v: VType) -> None:
     func = get_task_func(task)

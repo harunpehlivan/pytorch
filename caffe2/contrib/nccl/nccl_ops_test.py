@@ -137,8 +137,7 @@ class NCCLOpsTest(hu.HypothesisTestCase):
             assert len(args) == n
             reduced = sum(args)
             assert len(reduced.shape) > 1
-            ref = [reduced[i, :] for i in range(n)]
-            return ref
+            return [reduced[i, :] for i in range(n)]
 
         self.assertReferenceChecks(
             hu.gpu_do, op, [xs[i] for i, _ in enumerate(inputs)],
@@ -172,8 +171,7 @@ class NCCLOpsTest(hu.HypothesisTestCase):
     def test_timings(self):
         for n in range(2, workspace.NumGpuDevices()):
             for in_place in [False, True]:
-                xs = [np.random.randn(1e7).astype(np.float32)
-                      for i in range(n)]
+                xs = [np.random.randn(1e7).astype(np.float32) for _ in range(n)]
                 inputs = [str("x_{}".format(i)) for i in range(n)]
                 prefix = "" if in_place else "o"
                 outputs = [str("{}x_{}".format(prefix, i)) for i in range(n)]

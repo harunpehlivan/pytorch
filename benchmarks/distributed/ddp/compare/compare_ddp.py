@@ -205,8 +205,7 @@ def print_summary(buffer_size_to_metrics):
                 assert exp_latencies is not None
                 A_exp = np.array(exp_latencies)
                 # Yield option, mean, p50, p90, p95, p99 and delta.
-                row = [ddp_option]
-                row.append(np.mean(A_exp))
+                row = [ddp_option, np.mean(A_exp)]
                 append_delta(row, np.mean(A_baseline), np.mean(A_exp))
                 for px in [50, 90, 95, 99]:
                     base = np.percentile(A_baseline, px)

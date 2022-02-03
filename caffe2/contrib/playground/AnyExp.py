@@ -45,9 +45,7 @@ def initOpts(opts):
 
     opts['distributed']['num_xpus'] = num_xpus
     opts['distributed']['first_xpu_id'] = first_xpu
-    opts['temp_var'] = {}
-    opts['temp_var']['metrics_output'] = {}
-
+    opts['temp_var'] = {'metrics_output': {}}
     return opts
 
 
@@ -159,19 +157,19 @@ class AnyExpTrainer(object):
         metrics[name]['output'] = []
 
     def extendMetricsOutput(self):
-        metrics_output = self.metrics_output
-        if not metrics_output:
-            metrics_output['epochs'] = self.record_epochs
-            metrics_output['samples_per_sec'] = self.samples_per_sec
-            metrics_output['secs_per_train'] = self.secs_per_train
-            for metric, value in self.metrics.items():
-                metrics_output[metric] = value['output']
-        else:
+        if metrics_output := self.metrics_output:
             metrics_output['epochs'].extend(self.record_epochs)
             metrics_output['samples_per_sec'].extend(self.samples_per_sec)
             metrics_output['secs_per_train'].extend(self.secs_per_train)
             for metric, value in self.metrics.items():
                 metrics_output[metric].extend(value['output'])
+
+        else:
+            metrics_output['epochs'] = self.record_epochs
+            metrics_output['samples_per_sec'] = self.samples_per_sec
+            metrics_output['secs_per_train'] = self.secs_per_train
+            for metric, value in self.metrics.items():
+                metrics_output[metric] = value['output']
 
     @abstractmethod
     def init_plots(self):
@@ -179,11 +177,7 @@ class AnyExpTrainer(object):
 
     def add_plot(self, x, x_title, ys, y_title):
         plotsIngredients = self.plotsIngredients
-        aPlotIngredients = {}
-        aPlotIngredients['x'] = x
-        aPlotIngredients['x_title'] = x_title
-        aPlotIngredients['ys'] = ys
-        aPlotIngredients['y_title'] = y_title
+        aPlotIngredients = {'x': x, 'x_title': x_title, 'ys': ys, 'y_title': y_title}
         plotsIngredients.append(aPlotIngredients)
 
     @abstractmethod
@@ -197,7 +191,7 @@ class AnyExpTrainer(object):
         return range(self.epoch, iter_end_point)
 
     def list_of_epoch_iters(self):
-        return range(0, self.epoch_iterations)
+        return range(self.epoch_iterations)
 
     @abstractmethod
     def fun_per_epoch_b4RunNet(self, epoch):
@@ -452,7 +446,7 @@ class AnyExpTrainer(object):
                         metric['output'].append(metric['calculator'].Compute())
 
                     self.test_loop_start_time = time.time()
-                    for _test_iter in range(0, opts['epoch_iter']['num_test_iter']):
+                    for _test_iter in range(opts['epoch_iter']['num_test_iter']):
                         self.run_testing_net()
                         for key in self.metrics:
                             metric = self.metrics[key]

@@ -193,7 +193,7 @@ def InferOpBlobDevices(op):
 
 
 def InferOpDeviceAsBlobDevices(op):
-    op_dev = op.device_option if op.device_option else caffe2_pb2.DeviceOption()
+    op_dev = op.device_option or caffe2_pb2.DeviceOption()
     input_dev = [op_dev] * len(op.input)
     output_dev = [op_dev] * len(op.output)
     return input_dev, output_dev
@@ -273,7 +273,7 @@ class BlobReference(object):
         network's __getattr__ function.
         """
         inputs = [] if inputs is None else inputs
-        if isinstance(inputs, BlobReference) or isinstance(inputs, string_types):
+        if isinstance(inputs, (BlobReference, string_types)):
             inputs = [inputs]
         # add self to the input list.
         inputs.insert(0, self)
@@ -332,7 +332,7 @@ def _RectifyInputOutput(blobs, net=None):
     """A helper function to rectify the input or output of the CreateOperator
     interface.
     """
-    if isinstance(blobs, string_types) or isinstance(blobs, binary_type):
+    if isinstance(blobs, (string_types, binary_type)):
         # If blobs is a single string, prepend scope.CurrentNameScope()
         # and put it as a list.
         # TODO(jiayq): enforce using BlobReference instead of raw strings.
@@ -344,7 +344,7 @@ def _RectifyInputOutput(blobs, net=None):
         # If blob is a list, we go through it and type check.
         rectified = []
         for blob in blobs:
-            if isinstance(blob, string_types) or isinstance(blob, binary_type):
+            if isinstance(blob, (string_types, binary_type)):
                 rectified.append(ScopedBlobReference(blob, net=net))
             elif type(blob) is BlobReference:
                 rectified.append(blob)
@@ -527,9 +527,8 @@ class IR(object):
         # Validate StopGradient usage by checking that StopGradient's output
         # is actually passed forward
         for op in operators:
-            if op.type == 'StopGradient':
-                if op.output[0] not in self.input_usages:
-                    raise ValueError("""StopGradient's output '{}' is orphan.
+            if op.type == 'StopGradient' and op.output[0] not in self.input_usages:
+                raise ValueError("""StopGradient's output '{}' is orphan.
 You typically want to specify same input and output for
 StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
 
@@ -562,8 +561,11 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
 
         # Functions to generate debug help for version-mismatches
         def versionMismatchInfoOut(name):
-            s = "DEBUG HELP:\n"
-            s += "Maybe you use same output blob twice for different ops?\n"
+            s = (
+                "DEBUG HELP:\n"
+                + "Maybe you use same output blob twice for different ops?\n"
+            )
+
             s += "== Version history of blob [{}]\n".format(name)
             for (op, vers) in self.out_version_history[name]:
                 s += "Version (out) {} <-- {}".format(vers, op)
@@ -571,8 +573,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
             return s
 
         def versionMismatchInfoIn(name):
-            s = "DEBUG HELP:\n"
-            s += "Maybe the blob was overwritten by another op?\n"
+            s = "DEBUG HELP:\n" + "Maybe the blob was overwritten by another op?\n"
             s += "== Version history of blob [{}]\n".format(name)
             for (op, vers) in self.in_version_history[name]:
                 s += "version (in) {} <-- {}".format(vers, op)
@@ -713,10 +714,9 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
                         str(g.values) not in locally_generated_blobs:
                     self.gradient_generators[input_name][input_version].append(
                         SparseGradGenMeta(None, 0, None, 0, g, forward_op.device_option))
-            else:
-                if str(g) not in locally_generated_blobs:
-                    self.gradient_generators[input_name][input_version].append(
-                        GradGenMeta(None, 0, g, forward_op.device_option))
+            elif str(g) not in locally_generated_blobs:
+                self.gradient_generators[input_name][input_version].append(
+                    GradGenMeta(None, 0, g, forward_op.device_option))
 
         # Finally, for the gradients specified in g_input, we update the
         # gradient frontier to reflect the input versions that the gradients
@@ -729,9 +729,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
 
     def _GetSumOpOutputName(self, generator, input_name):
         def remove_suffix(s, suffix):
-            if s.endswith(suffix):
-                return s[:-len(suffix)]
-            return s
+            return s[:-len(suffix)] if s.endswith(suffix) else s
 
         for g in generator:
             if type(g) is GradGenMeta:
@@ -887,7 +885,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
     def _MakeSumOps(self, input_name, input_version):
         generators = self.gradient_generators[input_name][input_version]
         out_base_name = self._GetSumOpOutputName(generators, input_name)
-        types = list(set(type(x) for x in generators))
+        types = list({type(x) for x in generators})
         assert(len(types) == 1)
         if types[0] is GradGenMeta:
             sum_ops, g = self._MakeDenseSumOps(generators, out_base_name)
@@ -954,7 +952,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
         forward_op, in_versions, out_versions = self.ssa[fwd_op_idx]
         additional_sum_ops = []
         grad_map = {}
-        for _i, input_name in enumerate(set(forward_op.input)):
+        for input_name in set(forward_op.input):
             input_version = in_versions[input_name]
             input_usage = self.input_usages[input_name][input_version]
             if (len(input_usage) <= 1 or fwd_op_idx != input_usage[0]):
@@ -1020,11 +1018,12 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
         new_input_to_grad = {}
         gradient_ops = []
         forward_op, in_versions, out_versions = self.ssa[forward_op_idx]
-        g_output = list(
-            input_to_grad.get(name, None) for name in forward_op.output)
+        g_output = [input_to_grad.get(name, None) for name in forward_op.output]
 
-        if not all(g is None for g in g_output) or (
-                forward_op.type == "ZeroGradient"):
+        if (
+            any(g is not None for g in g_output)
+            or forward_op.type == "ZeroGradient"
+        ):
             gradient_ops, g_input = GradientRegistry.GetGradientForOp(
                 forward_op, g_output)
             # Check if the gradient operators are legal, and update
@@ -1056,7 +1055,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
               that are None, we will auto-fill them with 1.
         """
         if isinstance(ys, list):
-            ys = dict((y, None) for y in ys)
+            ys = {y: None for y in ys}
         elif not isinstance(ys, dict):
             raise TypeError("ys should either be a list or a dict.")
 
@@ -1096,8 +1095,7 @@ StopGradient. Op:\n\n{}""".format(op.output[0], str(op)))
         all_input_to_grad_out = {}
         for key, val in viewitems(all_input_to_grad):
             if val is not None:
-                if (isinstance(val, string_types) or
-                        isinstance(val, binary_type)):
+                if isinstance(val, (string_types, binary_type)):
                     grad_out = BlobReference(val)
                 else:
                     grad_out = GradientSlice(BlobReference(val[0]),
@@ -1257,7 +1255,7 @@ def get_undefined_blobs(ssa):
     """
     undef_blobs = set()
     for inputs, _outputs in ssa:
-        undef_blobs |= set(name for (name, ver) in inputs if ver == 0)
+        undef_blobs |= {name for (name, ver) in inputs if ver == 0}
     return undef_blobs
 
 
@@ -1281,11 +1279,11 @@ def get_op_ids_in_path(ssa, blob_versions, inputs, outputs):
     `outputs`, given blobs in `inputs`.
     Consider that the `inputs` are given in their latest version.
     """
-    inputs_set = set((str(i), blob_versions[str(i)]) for i in inputs)
+    inputs_set = {(str(i), blob_versions[str(i)]) for i in inputs}
     producers = get_output_producers(ssa)
     queue = [(str(o), blob_versions[str(o)]) for o in outputs]
     used_op_ids = set()
-    while len(queue) > 0:
+    while queue:
         o = queue.pop()
         if (o not in inputs_set) and (o in producers):
             op_id = producers[o]
@@ -1328,7 +1326,7 @@ def recurrent_network_op_remap(op, prefix, blob_remap):
 
 def control_op_remap(op, prefix, blob_remap):
     net_arg_names = []
-    if op.type == "If" or op.type == "AsyncIf":
+    if op.type in ["If", "AsyncIf"]:
         net_arg_names = ['then_net', 'else_net']
     else:
         net_arg_names = ['loop_net', 'cond_net']
@@ -1338,8 +1336,10 @@ def control_op_remap(op, prefix, blob_remap):
                 "Expected non empty net in " + op.type + "'s " + argument.name + " argument"
             subnet = Net(argument.n)
             remapped_subnet = subnet.Clone(
-                name=(subnet._net.name if subnet._net.name else '') + '_remapped',
-                blob_remap=blob_remap)
+                name=(subnet._net.name or '') + '_remapped',
+                blob_remap=blob_remap,
+            )
+
             argument.n.CopyFrom(remapped_subnet.Proto())
 
 
@@ -1520,10 +1520,7 @@ class Net(object):
                         autogen_indices.append(int(s[prefix_len]))
                     except ValueError:
                         pass
-            if len(autogen_indices):
-                self._next_name_index = max(autogen_indices) + 1
-            else:
-                self._next_name_index = 0
+            self._next_name_index = max(autogen_indices) + 1 if len(autogen_indices) else 0
             name = self._net.name
         else:
             name = name_or_proto
@@ -1996,10 +1993,7 @@ class Net(object):
             for o in op.output:
                 test_op_outputs.add(o)
 
-        test_external_inp = set()
-        for inp in self._net.external_input:
-            test_external_inp.add(inp)
-
+        test_external_inp = set(self._net.external_input)
         assert test_op_outputs.difference(self._op_outputs) == set()
         assert test_external_inp.difference(self._external_input_map) == set()
 
@@ -2012,10 +2006,7 @@ class Net(object):
             for o in op.output:
                 self._op_outputs.add(o)
 
-        self._external_input_map = set()
-        for inp in self._net.external_input:
-            self._external_input_map.add(inp)
-
+        self._external_input_map = set(self._net.external_input)
         self._recreate_lookup_tables = False
 
     def AddGradientOperators(self, ys, skip=0):
@@ -2134,8 +2125,7 @@ class Net(object):
         Tries to recover input record by taking a subset of external_inputs with
         a given prefix name and interpreting them as schema column names
         """
-        record = _recover_record_by_prefix(self._net.external_input, prefix)
-        if record:
+        if record := _recover_record_by_prefix(self._net.external_input, prefix):
             self.set_input_record(record)
 
     def set_output_record(self, record):
@@ -2158,8 +2148,7 @@ class Net(object):
         Tries to recover out record by taking a subset of external_outputs with
         a given prefix name and interpreting them as schema column names
         """
-        record = _recover_record_by_prefix(self._net.external_output, prefix)
-        if record:
+        if record := _recover_record_by_prefix(self._net.external_output, prefix):
             self.set_output_record(record)
 
     def AppendOutputRecordField(self, field_name, record):
@@ -3021,11 +3010,10 @@ def execution_step(default_name,
     elif isinstance(steps_or_nets, Net):
         step.AddNet(steps_or_nets)
     elif isinstance(steps_or_nets, list):
-        if all(isinstance(x, Net) for x in steps_or_nets):
-            for x in steps_or_nets:
+        for x in steps_or_nets:
+            if all(isinstance(x, Net) for x in steps_or_nets):
                 step.AddNet(x)
-        else:
-            for x in steps_or_nets:
+            else:
                 step.AddSubstep(to_execution_step(x))
     elif steps_or_nets:
         raise ValueError(
